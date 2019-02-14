@@ -40,10 +40,6 @@ def get_heart_data():
     #dfs = [pd.read_csv("%s/%s" %(data_dir,f)) for f in files]
     dfs = [np.genfromtxt("%s/%s" %(data_dir,f), delimiter=",")  for f in files]
 
-    #for df in dfs:
-    #    print df.shape
-
-    #data = pd.concat(dfs)
     data = np.concatenate(dfs)
 
     # process labels, replace 1,2,3 with 1
@@ -51,7 +47,29 @@ def get_heart_data():
     data[msk, -1] = 1.
     data[~msk, -1] = -1.
 
-    return data
+    X, y = data[:, :-1], data[:, -1]
+
+    return X, y
+
+
+def get_breast_data():
+    data_dir = "%s/UCI/breast-cancer-wisconsin" %DATA_DIR
+    files = [f for f in os.listdir(data_dir) if f.startswith("wdbc.data")]
+
+    dfs = [pd.read_csv("%s/%s" %(data_dir,f), header=None) for f in files]
+    #dfs = [np.genfromtxt("%s/%s" %(data_dir,f), delimiter=",")  for f in files]
+
+    data = pd.concat(dfs)
+
+    # process labels, replace B with 1, M with -1
+    msk = data[1].str.startswith('B')
+    data.loc[msk, 1] = 1.
+    data.loc[~msk, 1] = -1.
+
+    y = data.values[:,1]
+    X = data.values[:,2:]
+
+    return X, y
 
 
 def preprocess_feats(X, mean=None, std=None):
@@ -101,7 +119,7 @@ def get_distances_to_kernel(X):
     return (-X/X.mean())
 
 
-def get_kernels(X, Y=None, poly=False, gauss=False, distk=False):
+def get_kernels(X, Y=None, poly=False, gauss=False, distk=False, feat_kernel=False):
     kernels = []
     msk = np.isnan(X)
     X[msk] = 0.
@@ -110,10 +128,14 @@ def get_kernels(X, Y=None, poly=False, gauss=False, distk=False):
         Y = X
 
     if poly:
-        degrees = [1,2]
+        degrees = [1,2,3]
 
         for deg in degrees:
             kernels.append(get_ploynomial_kernel(X, Y, deg=deg))
+
+            if feat_kernel:
+                for i in range(X.shape[1]):
+                    kernels.append(get_ploynomial_kernel(X[:,i,np.newaxis], Y[:,i,np.newaxis], deg=deg))
 
 
     if gauss:
@@ -121,6 +143,10 @@ def get_kernels(X, Y=None, poly=False, gauss=False, distk=False):
 
         for w in widths:
             kernels.append(get_gaussian_kernel(X, Y, width=w))
+
+            if feat_kernel:
+                for i in range(X.shape[1]):
+                    kernels.append(get_gaussian_kernel(X[:,i,np.newaxis], Y[:,i,np.newaxis], width=w))
 
 
     if distk:

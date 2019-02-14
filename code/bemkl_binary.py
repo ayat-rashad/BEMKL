@@ -69,17 +69,17 @@ class BEMKL:
         cov_b_e[0,0] = var_b
         cov_b_e[1:,1:] = cov_e
         corr_e = cov_b_e[1:,1:] + outer(mu_b_e[1:], mu_b_e[1:])
-        print 'COV_b_e', cov_b_e
+        # # print 'COV_b_e', cov_b_e
 
         mu_a = np.random.normal(0,1, size=N)
         cov_a = diag(np.repeat((alpha_lambda*beta_lambda)**-1, N))
         corr_a = cov_a + outer(mu_a, mu_a)
 
-        print 'cov_a',cov_a[:5,:5]
+        # print 'cov_a',cov_a[:5,:5]
 
         mu_g = (np.abs(np.random.normal(0,1,size=(P,N))) + v) * y
 
-        print 'mu_g', mu_g[:,:3], mu_g[:,-3:]
+        # print 'mu_g', mu_g[:,:3], mu_g[:,-3:]
 
 
         # inter-column covariance: NxPxP
@@ -89,7 +89,7 @@ class BEMKL:
 
         mu_f = (np.random.rand(N) + 1e-5) * y
 
-        print 'mu_f',mu_f[:3], mu_f[-3:]
+        # print 'mu_f',mu_f[:3], mu_f[-3:]
 
         E_a2 = np.diag(cov_a) + mu_a**2
         E_b2 = alpha_gamma * beta_gamma + mu_b**2
@@ -105,7 +105,7 @@ class BEMKL:
         ######################################################################
 
         it = 1
-        v = 1
+        v = self.v
         trace = False
 
         while True:
@@ -128,9 +128,9 @@ class BEMKL:
             corr_a = cov_a + outer(mu_a, mu_a)
             E_a2 = diag(cov_a) + mu_a**2
 
-            print 'Updated a...'
-            print 'mu_a', mu_a[:5]
-            print 'cov_a', cov_a[:5,:5]
+            # print 'Updated a...'
+            # print 'mu_a', mu_a[:5]
+            # print 'cov_a', cov_a[:5,:5]
 
             '''
             ############
@@ -144,11 +144,11 @@ class BEMKL:
             corr_G = dot(mu_g,mu_g.T) + cov_g.sum(axis=0)  # exactly the same
             cov_G = cov_g.sum(axis=0)
 
-            print 'Updated g...'
-            print 'mu_g',mu_g[:,:3]
-            print mu_g[:,-3:]
-            print 'cov_g', cov_g[:1,...]
-            print 'corr_G', corr_G
+            # print 'Updated g...'
+            # print 'mu_g',mu_g[:,:3]
+            # print mu_g[:,-3:]
+            # print 'cov_g', cov_g[:1,...]
+            # print 'corr_G', corr_G
 
             '''
             ############
@@ -180,11 +180,11 @@ class BEMKL:
             E_e2 = diag(cov_b_e[1:,1:]) + mu_b_e[1:]**2
             corr_e = cov_b_e[1:,1:] + outer(mu_b_e[1:], mu_b_e[1:])
 
-            print 'Updated e:'
-            print 'mu_b_e', mu_b_e
-            print 'cov_b_e', cov_b_e
-            print 'corr_e', corr_e
-            print 'E_be', E_be
+            # print 'Updated e:'
+            # print 'mu_b_e', mu_b_e
+            # print 'cov_b_e', cov_b_e
+            # print 'corr_e', corr_e
+            # print 'E_be', E_be
 
             '''
             ############
@@ -204,11 +204,11 @@ class BEMKL:
             var_f = 1. + (alpha_f * pdf_alpha_f - beta_f * pdf_beta_f)/Z - (pdf_alpha_f - pdf_beta_f)**2/Z**2
             E_f2 = var_f + mu_f**2
 
-            print 'Updated f'
-            print 'mu_f',mu_f[:3],mu_f[-3:]
-            print 'var_f',var_f[:3]
-            print 'E_f2', E_f2[:3]
-            #print Z[:10],pdf_alpha_f[:3], pdf_beta_f[:3]
+            # print 'Updated f'
+            # print 'mu_f',mu_f[:3],mu_f[-3:]
+            # print 'var_f',var_f[:3]
+            # print 'E_f2', E_f2[:3]
+            ## print Z[:10],pdf_alpha_f[:3], pdf_beta_f[:3]
 
             '''
             ###################
@@ -219,45 +219,45 @@ class BEMKL:
                 E_log_lambda = digamma(p_alpha_lambda) + log(p_beta_lambda)
                 E_lp_lambda = ((alpha_lambda - 1) * E_log_lambda - 1.0/beta_lambda * E_lambda - log(gamma(alpha_lambda))
                         - alpha_lambda * log(beta_lambda)).sum(axis=0)
-                print 'lp_lam', E_lp_lambda
+                # print 'lp_lam', E_lp_lambda
 
                 # E(log(p(a|lambda)))
                 E_lp_a_lambda = ( - 0.05 * tr(dot(diag(E_lambda), corr_a)).sum() - 0.5 * N *log(2.0*np.pi)
                                  + 0.05 * log(np.prod(E_lambda)))
-                print 'lp_a_lam', E_lp_a_lambda
+                # print 'lp_a_lam', E_lp_a_lambda
 
                 # E(log(p(G|a,K)))
                 E_g2 = arr([(diag(cov_g[i,...]) + mu_g[:,i]**2).sum() for i in range(N)])
                 kga = arr([dot(K[:,:,i].T , outer(mu_g[:,i],mu_a)) for i in range(N)])
 
                 kaa = arr([dot(K[:,:,i].T , dot(K[:,:,i],corr_a)) for i in range(N)])
-                #print 'kaa', kaa[0,:5,:5]
+                ## print 'kaa', kaa[0,:5,:5]
 
                 E_lp_G = np.sum([-.5 * E_g2[i] + tr(kga[i,...]) - 0.5 * tr(kaa[i,...])
                                  - 0.5 * P *log(2.0*np.pi) for i in range(N)])
-                print 'lp_g', E_lp_G
+                # print 'lp_g', E_lp_G
 
                 # E(log(p(gamma)))
                 E_log_gamma = digamma(p_alpha_gamma) + log(p_beta_gamma)
-                print 'E_log_gamma', E_log_gamma
+                # print 'E_log_gamma', E_log_gamma
                 E_lp_gamma = ((alpha_gamma - 1) * E_log_gamma - E_gamma/beta_gamma
                               - log(gamma(alpha_gamma)) - alpha_gamma * log(beta_gamma))
-                print 'lp_gamma', E_lp_gamma
+                # print 'lp_gamma', E_lp_gamma
 
                 # E(log(p(b|gamma)))
                 E_lp_b = (- 0.5 * E_gamma * E_b2 - 0.5 *log(2.0*np.pi) + 0.5 * log(E_gamma))
-                print 'lp_b', E_lp_b
+                # print 'lp_b', E_lp_b
 
                 # E(log(p(omega)))
                 E_log_omega = digamma(p_alpha_omega) + log(p_beta_omega)
                 E_lp_omega = ((alpha_omega - 1) * E_log_omega - E_omega/beta_omega - log(gamma(alpha_omega))
                               - alpha_omega * log(beta_omega) ).sum()
-                print 'lp_omega', E_lp_omega
+                # print 'lp_omega', E_lp_omega
 
                 # E(log(p(e|omega)))
                 E_lp_e = ( -0.5 * tr(dot(diag(E_omega), corr_e)) - 0.5 * P * log(2.0*np.pi)
                          + 0.05 * log(np.prod(E_omega)))
-                print 'lp_e', E_lp_e
+                # print 'lp_e', E_lp_e
 
                 # E(log(p(f|e,b,G)))
                 z1 = (- 0.5 * E_f2).sum()
@@ -265,50 +265,50 @@ class BEMKL:
                 z3 = - 0.5 * np.sum(dot(corr_e, corr_G)) - 0.5 * (dot(E_be, mu_g) + E_b2).sum()
 
                 E_lp_f =  z1 + z2 + z3 - 0.5 *  N *log(2.0*np.pi)
-                print 'lp_f'
-                print E_lp_f
+                # print 'lp_f'
+                # print E_lp_f
 
 
                 # E(log(q(lambda)))
                 E_lq_lambda = (-p_alpha_lambda - log(p_beta_lambda) - log(gamma(p_alpha_lambda))
                                - (1-p_alpha_lambda) * digamma(p_alpha_lambda)).sum()
-                print 'lq_lam', E_lq_lambda
+                # print 'lq_lam', E_lq_lambda
 
                 # E(log(q(a)))
                 E_lq_a = -0.5 * N * (log(2.0*np.pi)+1) - 0.5 * slogdet(cov_a)[1]
-                print 'lq_a', E_lq_a
+                # print 'lq_a', E_lq_a
 
                 # E(log(q(G)))
                 #E_lq_G = (-0.5 * P *(log(2.0*np.pi)+1) - 0.5 * np.array([slogdet(cov_g[i])[0] for i in range(N)])).sum()
                 E_lq_G = -0.5 * N * P *(log(2.0*np.pi)+1) - 0.5 * slogdet(cov_G)[1]
-                print 'lq_g', E_lq_G
+                # print 'lq_g', E_lq_G
 
                 # E(log(q(gamma)))
                 E_lq_gamma = (-p_alpha_gamma - log(p_beta_gamma) - log(gamma(p_alpha_gamma))
                                - (1-p_alpha_gamma) * digamma(p_alpha_gamma))
-                print 'lq_gamma', E_lq_gamma
+                # print 'lq_gamma', E_lq_gamma
 
                 # E(log(q(omega)))
                 E_lq_omega = (-p_alpha_omega - log(p_beta_omega) - log(gamma(p_alpha_omega))
                                - (1-p_alpha_omega) * digamma(p_alpha_omega)).sum()
-                print 'lq_omega', E_lq_omega
+                # print 'lq_omega', E_lq_omega
 
                 # E(log(q(b,e)))
                 E_lq_b_e = (0.5 * (P+1) *(log(2.0*np.pi)+1) + 0.5 * slogdet(cov_b_e)[1])
-                print 'lq_be', E_lq_b_e
+                # print 'lq_be', E_lq_b_e
 
                 # E(log(q(f)))
                 E_lq_f = (-0.5 * (log(2.0*np.pi) + var_f) - log(Z)).sum()
-                print 'lq_f', E_lq_f
+                # print 'lq_f', E_lq_f
 
 
                 ELBO = (E_lp_lambda + E_lp_a_lambda + E_lp_G + E_lp_gamma + E_lp_b + E_lp_omega + E_lp_e + E_lp_f
                         - E_lq_lambda - E_lq_a - E_lq_G - E_lq_gamma - E_lq_omega - E_lq_b_e - E_lq_f)
 
-                print "ITER %d: %f" %(it, ELBO)
+                # print "ITER %d: %f" %(it, ELBO)
 
                 if np.abs(ELBO - ELBO_init) < thresh:
-                    print 'Convergence'
+                    # print 'Convergence'
                     break
 
                 ELBO_init = ELBO
@@ -335,12 +335,12 @@ class BEMKL:
 
         pred_mu_g = cstack([dot(K_test[:,i,:], self.mu_a) for i in range(N_test)])
         pred_cov_g = np.array([1 + K_test[i,:,:].dot(self.cov_a).dot(K_test[i,:,:].T) for i in range(P)])
-        #print pred_mu_g
+        ## print pred_mu_g
 
         #pred_mu_f = mu_b_e[1:].dot(pred_mu_g)+ mu_b_e[0]
         z = np.vstack((np.ones(N_test),pred_mu_g))
         pred_mu_f = z.T.dot(self.mu_b_e)
-        #print pred_mu_f
+        ## print pred_mu_f
 
         pred_var_f = 1. + diag(z.T.dot(self.cov_b_e).dot(z))
 
@@ -350,7 +350,7 @@ class BEMKL:
         #z =  norm.cdf((pred_mu_f - v)/pred_var_f)
         #Z_test = z + norm.cdf((-pred_mu_f - v)/pred_var_f)
 
-        #print z
+        ## print z
         prob_y = Z_test**(-1)*(z)
         pred_y = np.zeros_like(prob_y)
         pred_y[prob_y > .5] = 1.

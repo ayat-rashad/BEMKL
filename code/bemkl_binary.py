@@ -1,6 +1,13 @@
+from __future__ import division
+
 import numpy as np
 import pandas as pd
 import scipy as sc
+
+import time
+
+from sklearn.model_selection import KFold
+
 
 
 log = np.log
@@ -25,13 +32,17 @@ slogdet = np.linalg.slogdet
 
 class BEMKL:
     def __init__(self, max_iter=100, sparse=False):
+        self.v = 1.
+        self.max_iter = max_iter
+        self.sparse = sparse
+        self.reset()
+
+
+    def reset(self):
         self.mu_a = None
         self.cov_a = None
         self.mu_b_e = None
         self.cov_b_e = None
-        self.v = 1.
-        self.max_iter = max_iter
-        self.sparse = sparse
 
 
     def bemkl_binary(self, K, y):
@@ -62,7 +73,7 @@ class BEMKL:
 
         mu_b = 0
         var_b = 1
-        mu_e = np.ones(P)
+        mu_e = np.zeros(P)
         mu_b_e = np.concatenate(([mu_b],mu_e))
         cov_e = np.eye(P)
         cov_b_e = np.zeros((P+1,P+1))
@@ -357,3 +368,34 @@ class BEMKL:
         pred_y[prob_y <= .5] = -1.
 
         return pred_y, prob_y
+
+
+
+    def evaluate_model(self, K, y, cv_folds=5):
+        fold_size = 1./cv_folds
+        fold_accuracy = []
+        train_times = []
+        i = 0
+        kf = KFold(n_splits=cv_folds)
+
+        for train_index, test_index in kf.split(y):
+            K_train, K_test = K[:,train_index,:][:,:,train_index], K[:, test_index, :][:,:,train_index]
+            y_train, y_test = y[train_index], y[test_index]
+
+            t1 = time.time()
+
+            self.reset()
+            self.bemkl_binary(K_train, y_train)
+
+            t2 = time.time()
+            diff = t2 - t1
+            train_times.append(diff)
+
+            pred, prob = self.predict(K_test)
+
+            accuracy = (pred==y_test).sum()*1./y_test.shape[0]
+            fold_accuracy.append(accuracy)
+
+        #print fold_accuracy
+        print 'Mean Accuracy:', np.mean(fold_accuracy)
+        #print 'Mean Training Time:', np.mean(train_times)

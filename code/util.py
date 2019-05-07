@@ -72,7 +72,81 @@ def get_breast_data():
     return X, y
 
 
+def get_iono_data():
+    data_dir = "%s/UCI/ionosphere" %DATA_DIR
+    files = [f for f in os.listdir(data_dir) if f.endswith("data")]
+
+    dfs = [pd.read_csv("%s/%s" %(data_dir,f), header=None) for f in files]
+
+    data = pd.concat(dfs)
+
+    y = data.values[:,-1]
+    X = data.values[:,:-1]
+
+    # process labels, replace g with 1, b with -1
+    msk = y == "g"
+    y[msk] = 1.
+    y[~msk] = -1.
+
+    return X.astype('f16'), y.astype('f16')
+
+
+def get_pima_data():
+    data_dir = "%s/UCI/pima-indians-diabetes" %DATA_DIR
+    files = [f for f in os.listdir(data_dir) if f.startswith("pima-indians-diabetes.data")]
+    dfs = [pd.read_csv("%s/%s" %(data_dir,f), header=None) for f in files]
+    data = np.concatenate(dfs)
+
+    msk = data[:,-1] > 0
+    data[msk, -1] = 1.
+    data[~msk, -1] = -1.
+
+    X = data[:,:-1]
+    y = data[:, -1]
+
+    return X, y
+
+
+def get_wpbc_data():
+    data_dir = "%s/UCI/wpbc" %DATA_DIR
+    files = [f for f in os.listdir(data_dir) if f.startswith("wpbc.data")]
+    dfs = [pd.read_csv("%s/%s" %(data_dir,f), header=None) for f in files]
+    data = np.concatenate(dfs)
+
+    msk = data[:,0] == 'N'
+    data[msk, 0] = 1.
+    data[~msk, 0] = -1.
+
+    msk = data[:,-1] == '?'
+
+    data[msk, -1] = 0
+
+    X = data[:,1:-1]
+    y = data[:,0]
+
+    return X.astype('f16'), y.astype('f16')
+
+
+def get_sonar_data():
+    data_dir = "%s/UCI/sonar" %DATA_DIR
+    files = [f for f in os.listdir(data_dir) if f.startswith("sonar.all-data")]
+    dfs = [pd.read_csv("%s/%s" %(data_dir,f), header=None) for f in files]
+    data = np.concatenate(dfs)
+    msk = data[:,-1]=='R'
+    data[msk, -1] = 1.
+    data[~msk, -1] = -1.
+
+    X = data[:,:-1]
+    y = data[:, -1]
+
+    return X.astype('f16'), y.astype('f16')
+
+
 def preprocess_feats(X, mean=None, std=None):
+    '''
+    Normalization of features
+    '''
+
     X[np.isnan(X)] = 0.
 
     if mean is None:
@@ -85,6 +159,10 @@ def preprocess_feats(X, mean=None, std=None):
 
 
 def preprocess_kernel(K):
+    '''
+    Spherical normalization of kernel matrix
+    '''
+
     if len(K.shape) < 3:
         K = K[np.newaxis,...]
 
@@ -119,7 +197,45 @@ def get_distances_to_kernel(X):
     return (-X/X.mean())
 
 
-def get_kernels(X, Y=None, poly=False, gauss=False, distk=False, feat_kernel=False):
+def get_kernels(X, Y=None, poly=False, max_poly_deg=3, gauss=False, max_gauss_width=6, min_gauss_width=-3,
+ distk=False, feat_kernel=False):
+    kernels = []
+    msk = np.isnan(X)
+    X[msk] = 0.
+    degrees = np.arange(1,max_poly_deg+1)
+    widths = map(lambda x: 2.**x, np.arange(min_gauss_width,max_gauss_width+1))
+
+    if Y is None:
+        Y = X
+
+    if poly:
+        for deg in degrees:
+            kernels.append(get_ploynomial_kernel(X, Y, deg=deg))
+
+    if gauss:
+        for w in widths:
+            kernels.append(get_gaussian_kernel(X, Y, width=w))
+
+
+    if distk:
+        kernels.append(get_distances_to_kernel(X))
+
+
+    if feat_kernel and poly:
+        for deg in degrees:
+            for i in range(X.shape[1]):
+                kernels.append(get_ploynomial_kernel(X[:,i,np.newaxis], Y[:,i,np.newaxis], deg=deg))
+
+    if feat_kernel and gauss:
+        for w in widths:
+            for i in range(X.shape[1]):
+                kernels.append(get_gaussian_kernel(X[:,i,np.newaxis], Y[:,i,np.newaxis], width=w))
+
+    return arr(kernels)
+
+
+def get_kernels2(X, Y=None, poly=False, max_poly_deg=3, gauss=False, max_gauss_width=6, min_gauss_width=-3,
+ distk=False, feat_kernel=False):
     kernels = []
     msk = np.isnan(X)
     X[msk] = 0.
@@ -128,7 +244,7 @@ def get_kernels(X, Y=None, poly=False, gauss=False, distk=False, feat_kernel=Fal
         Y = X
 
     if poly:
-        degrees = [1,2,3]
+        degrees = np.arange(1,max_poly_deg+1)
 
         for deg in degrees:
             kernels.append(get_ploynomial_kernel(X, Y, deg=deg))
@@ -139,7 +255,7 @@ def get_kernels(X, Y=None, poly=False, gauss=False, distk=False, feat_kernel=Fal
 
 
     if gauss:
-        widths = map(lambda x: 2**x, np.arange(-3,6))
+        widths = map(lambda x: 2.**x, np.arange(min_gauss_width,max_gauss_width+1))
 
         for w in widths:
             kernels.append(get_gaussian_kernel(X, Y, width=w))

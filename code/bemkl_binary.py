@@ -31,10 +31,11 @@ slogdet = np.linalg.slogdet
 
 
 class BEMKL:
-    def __init__(self, max_iter=100, sparse=False):
+    def __init__(self, max_iter=100, sparse=False, data_sparse=False):
         self.v = 1.
         self.max_iter = max_iter
         self.sparse = sparse
+        self.data_sparse = data_sparse
         self.reset()
 
 
@@ -59,6 +60,9 @@ class BEMKL:
 
         if self.sparse:
             alpha_omega, beta_omega = 10.0**-10, 10.0**10
+
+        if self.data_sparse:
+            alpha_lambda, beta_lambda = 10.0**-10, 10.0**10
 
         v = self.v
 
@@ -398,4 +402,13 @@ class BEMKL:
 
         #print fold_accuracy
         print 'Mean Accuracy:', np.mean(fold_accuracy)
-        #print 'Mean Training Time:', np.mean(train_times)
+
+
+    def report_results(self):
+        weight_threshold = 1e-3
+
+        print 'Nmber of Chosen Kernels:'
+        print (np.abs(self.mu_b_e[1:]) > weight_threshold).sum()
+
+        print 'Nmber of Chosen Points:'
+        print (np.abs(self.mu_a) > weight_threshold).sum()

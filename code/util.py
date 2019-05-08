@@ -6,6 +6,7 @@ import os
 
 from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.metrics.pairwise import polynomial_kernel
+from sklearn.preprocessing import LabelEncoder
 
 
 DATA_DIR = "../data"
@@ -31,7 +32,7 @@ append = np.append
 slogdet = np.linalg.slogdet
 
 
-def get_heart_data():
+def get_heart_data(shuffle=True):
     data_dir = "%s/UCI/heart-disease" %DATA_DIR
     files = [f for f in os.listdir(data_dir) if f.startswith("processed")]
 
@@ -48,6 +49,11 @@ def get_heart_data():
     data[~msk, -1] = -1.
 
     X, y = data[:, :-1], data[:, -1]
+
+    if shuffle:
+        np.random.seed(123)
+        p = np.random.permutation(X.shape[0])
+        X, y = X[p], y[p]
 
     return X, y
 
@@ -72,7 +78,7 @@ def get_breast_data():
     return X, y
 
 
-def get_iono_data():
+def get_iono_data(shuffle=True):
     data_dir = "%s/UCI/ionosphere" %DATA_DIR
     files = [f for f in os.listdir(data_dir) if f.endswith("data")]
 
@@ -88,10 +94,15 @@ def get_iono_data():
     y[msk] = 1.
     y[~msk] = -1.
 
-    return X.astype('f16'), y.astype('f16')
+    if shuffle:
+        np.random.seed(123)
+        p = np.random.permutation(X.shape[0])
+        X, y = X[p], y[p]
+
+    return X.astype('f4'), y.astype('f4')
 
 
-def get_pima_data():
+def get_pima_data(shuffle=True):
     data_dir = "%s/UCI/pima-indians-diabetes" %DATA_DIR
     files = [f for f in os.listdir(data_dir) if f.startswith("pima-indians-diabetes.data")]
     dfs = [pd.read_csv("%s/%s" %(data_dir,f), header=None) for f in files]
@@ -104,10 +115,15 @@ def get_pima_data():
     X = data[:,:-1]
     y = data[:, -1]
 
+    if shuffle:
+        np.random.seed(123)
+        p = np.random.permutation(X.shape[0])
+        X, y = X[p], y[p]
+
     return X, y
 
 
-def get_wpbc_data():
+def get_wpbc_data(shuffle=True):
     data_dir = "%s/UCI/wpbc" %DATA_DIR
     files = [f for f in os.listdir(data_dir) if f.startswith("wpbc.data")]
     dfs = [pd.read_csv("%s/%s" %(data_dir,f), header=None) for f in files]
@@ -124,10 +140,15 @@ def get_wpbc_data():
     X = data[:,1:-1]
     y = data[:,0]
 
-    return X.astype('f16'), y.astype('f16')
+    if shuffle:
+        np.random.seed(123)
+        p = np.random.permutation(X.shape[0])
+        X, y = X[p], y[p]
+
+    return X.astype('f4'), y.astype('f4')
 
 
-def get_sonar_data():
+def get_sonar_data(shuffle=True):
     data_dir = "%s/UCI/sonar" %DATA_DIR
     files = [f for f in os.listdir(data_dir) if f.startswith("sonar.all-data")]
     dfs = [pd.read_csv("%s/%s" %(data_dir,f), header=None) for f in files]
@@ -139,7 +160,37 @@ def get_sonar_data():
     X = data[:,:-1]
     y = data[:, -1]
 
-    return X.astype('f16'), y.astype('f16')
+    if shuffle:
+        np.random.seed(123)
+        p = np.random.permutation(X.shape[0])
+        X, y = X[p], y[p]
+
+    return X.astype('f4'), y.astype('f4')
+
+
+def get_liver_data(shuffle=True):
+    data_dir = "%s/UCI/liver" %DATA_DIR
+    data = pd.read_csv("%s/liver.csv" %(data_dir), header=None).values
+    msk = data[:,-1]== 1
+    data[msk, -1] = 1.
+    data[~msk, -1] = -1.
+
+    X = data[:,:-1]
+    y = data[:, -1]
+
+    # encode categorical variables
+    le = LabelEncoder()
+
+    for i in range(X.shape[1]):
+        if not np.issubdtype(X[:,i].dtype, np.number):
+            X[:,i] = le.fit_transform(X[:,i])
+
+    if shuffle:
+        np.random.seed(123)
+        p = np.random.permutation(X.shape[0])
+        X, y = X[p], y[p]
+
+    return X.astype('f4'), y.astype('f4')
 
 
 def preprocess_feats(X, mean=None, std=None):

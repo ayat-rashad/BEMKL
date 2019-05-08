@@ -34,8 +34,10 @@ def plot_kernel(K, fname):
 
 
 def plot_results(model, fname):
-    sparse = "sp" if model.sparse else "nsp"
+    sparse = "sparse" if model.sparse else "non_sparse"
+    data_sparse = "data_sparse" if model.data_sparse else "non_data_sparse"
     mu_b_e = model.mu_b_e
+    mu_a = model.mu_a
     cov_b_e = model.cov_b_e
 
     fig, ax = plt.subplots(1, 1)
@@ -44,4 +46,12 @@ def plot_results(model, fname):
     plt.title('%s_%s' % (fname, sparse))
 
     fig.savefig('%s_%s.png' % (fname, sparse), dpi=400,
+                transparent=True, bbox_inches='tight')
+
+    fig= plt.figure()
+
+    plt.bar(np.arange(mu_a.shape[0]), mu_a)
+    plt.title('%s_%s' % (fname, data_sparse))
+
+    fig.savefig('%s_%s.png' % (fname, data_sparse), dpi=400,
                 transparent=True, bbox_inches='tight')
